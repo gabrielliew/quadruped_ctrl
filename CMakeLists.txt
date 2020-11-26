@@ -15,7 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_generation
 )
-
+find_package(Eigen3 REQUIRED)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -153,6 +153,7 @@ target_link_libraries(${PROJECT_NAME}
   JCQP
   qpOASES
   osqp
+  Eigen3::Eigen
 )
 
 # add_executable(mainController src/mainController.cpp)

@@ -166,7 +166,7 @@ def init_simulator():
     high_performance_mode = p.addUserDebugParameter("high_performance_mode", 1, 0, 0)
     p.setGravity(0, 0, -9.8)
     p.setTimeStep(1.0/freq)
-    p.resetDebugVisualizerCamera(0.2, 45, -30, [1, -1, 1])
+    p.resetDebugVisualizerCamera(0.2, 45, -15, [1, -1, 1])
     # p.setPhysicsEngineParameter(numSolverIterations=30)
     # p.setPhysicsEngineParameter(enableConeFriction=0)
     # planeId = p.loadURDF("plane.urdf")
@@ -267,6 +267,7 @@ def init_simulator():
 
 def main():
     cnt = 0
+    simTime=0
     rate = rospy.Rate(freq)  # hz
     reset_flag = p.readUserDebugParameter(reset)
     low_energy_flag = p.readUserDebugParameter(low_energy_mode)
@@ -300,12 +301,14 @@ def main():
                                     forces=tau.contents.eff)
 
         # reset visual cam
-        p.resetDebugVisualizerCamera(2.5, 45, -30, base_pos)
+        # p.resetDebugVisualizerCamera(2.5, 45, -30, base_pos)
 
         cnt += 1
         if cnt > 99999999:
             cnt = 99999999
         p.stepSimulation()
+        simTime+=1.0/freq
+        print(simTime)
         rate.sleep()
 
 

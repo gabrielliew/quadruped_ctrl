@@ -27,16 +27,6 @@ void initialize_mpc()
 
   if(pthread_mutex_init(&update_mt,NULL)!=0)
     printf("[MPC ERROR] Failed to initialize update data mutex.\n");
-
-#ifdef K_DEBUG
-  printf("[MPC] Debugging enabled.\n");
-    printf("[MPC] Size of problem setup struct: %ld bytes.\n", sizeof(problem_setup));
-    printf("      Size of problem update struct: %ld bytes.\n",sizeof(update_data_t));
-    printf("      Size of MATLAB floating point type: %ld bytes.\n",sizeof(mfp));
-    printf("      Size of flt: %ld bytes.\n",sizeof(flt));
-#else
-  //printf("[MPC] Debugging disabled.\n");
-#endif
 }
 
 void setup_problem(double dt, int horizon, double mu, double f_max)
@@ -48,11 +38,6 @@ void setup_problem(double dt, int horizon, double mu, double f_max)
     initialize_mpc();
   }
 
-#ifdef K_DEBUG
-  printf("[MPC] Got new problem configuration!\n");
-    printf("[MPC] Prediction horizon length: %d\n      Force limit: %.3f, friction %.3f\n      dt: %.3f\n",
-            horizon,f_max,mu,dt);
-#endif
 
   //pthread_mutex_lock(&problem_cfg_mt);
 
@@ -132,37 +117,6 @@ void update_problem_data_floats(float* p, float* v, float* q, float* w,
   memcpy((void*)update.r,(void*)r,sizeof(float)*12);
   memcpy((void*)update.weights,(void*)weights,sizeof(float)*12);
   memcpy((void*)update.traj,(void*)state_trajectory, sizeof(float) * 12 * problem_configuration.horizon);
-  // std::cout << "---------------" << std::endl;
-  // std::cout << "yaw = " << update.yaw << " alpha = " << update.alpha << std::endl;
-  // std::cout << "p = " << update.p[0] << " " << update.p[1] << " " << update.p[2] << std::endl;
-  // std::cout << "v = " << update.v[0] << " " << update.v[1] << " " << update.v[2] << std::endl;
-  // std::cout << "q = " << update.q[0] << " " << update.q[1] << " " << update.q[2] << " " << update.q[3] << std::endl;
-  // std::cout << "w = " << update.w[0] << " " << update.w[1] << " " << update.w[2] << std::endl;
-  // std::cout << "r = " << std::endl;
-  // for(int i=0; i<12; i++) {
-  //   std::cout << update.r[i] << " ";
-  // }
-  // std::cout << std::endl;
-  // std::cout << "weights = " << std::endl;
-  // for(int i=0; i<12; i++) {
-  //   std::cout << update.weights[i] << " ";
-  // }
-  // std::cout << std::endl;
-  // std::cout << "trajAll = " << std::endl;
-  // for(int i = 0; i < problem_configuration.horizon; i++) {
-  //   for(int j = 0; j < 12; j++){
-  //       std::cout << update.traj[12*i+j] << " ";
-  //     }
-  // }
-  // std::cout << std::endl;
-  // std::cout << "gait = " << std::endl;
-  // for(int i = 0; i < problem_configuration.horizon; i++) {
-  //   for(int j = 0; j < 4; j++){
-  //       std::cout << (int)update.gait[4*i+j] << " ";
-  //     }
-  // }
-  // std::cout << std::endl;
-  // std::cout << "---------------" << std::endl;
   solve_mpc(&update, &problem_configuration);
   has_solved = 1;
 

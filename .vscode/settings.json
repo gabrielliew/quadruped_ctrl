@@ -66,7 +66,22 @@
         "string_view": "cpp",
         "*.cuh": "cpp",
         "core": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "matrixfunctions": "cpp",
+        "timer": "cpp",
+        "dense": "cpp",
+        "quat": "cpp",
+        "vec4b": "cpp",
+        "vec4d": "cpp",
+        "vec4f": "cpp",
+        "vec4i": "cpp",
+        "vec4s": "cpp",
+        "vec4ub": "cpp",
+        "vec4ui": "cpp",
+        "vec4us": "cpp",
+        "vec3": "cpp",
+        "bit": "cpp",
+        "variant": "cpp"
     },
     "python.autoComplete.extraPaths": [
         "/home/derek/ros_workspace/quadruped_ws/devel/lib/python2.7/dist-packages",
