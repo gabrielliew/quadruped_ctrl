@@ -134,7 +134,7 @@ void ConvexMPCLocomotion::recompute_timing(int iterations_per_mpc) {
 void ConvexMPCLocomotion::_SetupCommand(
     StateEstimatorContainer<float> &_stateEstimator,
     std::vector<double> gamepadCommand) {
-  _body_height = 0.25;
+  _body_height = 0.29;
 
   float x_vel_cmd, y_vel_cmd, yaw_vel_cmd;
   float x_filter(0.01), y_filter(0.006), yaw_filter(0.03);
@@ -542,9 +542,15 @@ void ConvexMPCLocomotion::updateMPCIfNeeded(
               trajAll[12 * (i - 1) + 2] + dtMPC * _yaw_turn_rate;
         }
       }
+      // for (int i = 0; i < 10; i++) {
+      //   for (int j = 0; j < 12; j++) {
+      //     std::cout << trajAll[12 * i + j] << " ";
+      //   }
+      //   std::cout << std::endl;
+      // }
     }
-    solveDenseMPC(mpcTable, _stateEstimator);
   }
+  solveDenseMPC(mpcTable, _stateEstimator);
 }
 
 void ConvexMPCLocomotion::solveDenseMPC(
@@ -649,6 +655,11 @@ ConvexMPCLocomotion::updateMPC(const RobotSystemOutputData &robotSystemData,
           0.026 * vBody_des[1];
     }
   }
+  // for (int i = 0; i < 10; i++) {
+  //   std::cout
+  //       << updateMPCData.stateTrajectory.block(i * 13, 0, 13, 1).transpose()
+  //       << std::endl;
+  // }
   updateMPCData.weights = Eigen::MatrixXd(13, 1);
   updateMPCData.weights << 0.25, 0.25, 10, 2, 2, 50, 0, 0, 0.3, 0.2, 0.2, 0.1,
       0.0;
