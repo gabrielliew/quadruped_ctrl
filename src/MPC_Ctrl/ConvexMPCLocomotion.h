@@ -196,6 +196,7 @@ private:
   float dtMPC;              // 0.03
   int iterationCounter = 0; //
   Vec3<float> f_ff[4];
+  Vec3<float> f_ff2[4];
   Vec4<float> swingTimes;
   FootSwingTrajectory<float> footSwingTrajectories[4];
   OffsetDurationGait aio, trotting, bounding, pronking, jumping, galloping,

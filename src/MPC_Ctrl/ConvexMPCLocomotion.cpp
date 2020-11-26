@@ -342,14 +342,23 @@ void ConvexMPCLocomotion::run(Quadruped<float> &_quadruped,
 
     auto mpcData = updateMPC(robotSystemData, userInput, gaitTable);
     auto preRotationTorque = solveMPC(mpcData);
-    for (int i = 0; i < 4; i++) {
-      auto tempTorque = -robotSystemData.baseToWorldRotMat *
-                        preRotationTorque.block<3, 1>(i * 3, 0);
-      for (int j = 0; j < 3; j++)
-        f_ff[i][j] = tempTorque[j];
-      std::cout << f_ff[i].transpose() << std::endl;
+    if (robotMode == 1) {
+      for (int i = 0; i < 4; i++) {
+        auto tempTorque = -robotSystemData.baseToWorldRotMat *
+                          preRotationTorque.block<3, 1>(i * 3, 0);
+        for (int j = 0; j < 3; j++)
+          f_ff[i][j] = tempTorque[j];
+        std::cout << f_ff[i].transpose() << std::endl;
+      }
+    } else {
+      for (int i = 0; i < 4; i++) {
+        auto tempTorque = -robotSystemData.baseToWorldRotMat *
+                          preRotationTorque.block<3, 1>(i * 3, 0);
+        for (int j = 0; j < 3; j++)
+          f_ff2[i][j] = tempTorque[j];
+        std::cout << f_ff2[i].transpose() << std::endl;
+      }
     }
-
     auto end = high_resolution_clock::now();
     std::cout << "time taken: "
               << duration_cast<microseconds>(end - start).count() << "us"

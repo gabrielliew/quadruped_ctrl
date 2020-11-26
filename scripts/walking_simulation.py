@@ -158,13 +158,13 @@ def reset_robot():
 
 
 def init_simulator():
-    global boxId, reset, low_energy_mode, high_performance_mode, terrain
+    global boxId, reset, our_mpc, normal_mpc, terrain
     robot_start_pos = [0, 0, 0.42]
     p.connect(p.GUI)  # or p.DIRECT for non-graphical version
     #p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
     reset = p.addUserDebugParameter("reset", 1, 0, 0)
-    low_energy_mode = p.addUserDebugParameter("low_energy_mode", 1, 0, 0)
-    high_performance_mode = p.addUserDebugParameter("high_performance_mode", 1, 0, 0)
+    our_mpc = p.addUserDebugParameter("our_mpc", 1, 0, 0)
+    normal_mpc = p.addUserDebugParameter("normal_mpc", 1, 0, 0)
     p.setGravity(0, 0, -9.8)
     p.setTimeStep(1.0/freq)
     p.resetDebugVisualizerCamera(0.2, 45, -15, [1, -1, 1])
@@ -273,8 +273,8 @@ def main():
     simTime=0
     rate = rospy.Rate(freq)  # hz
     reset_flag = p.readUserDebugParameter(reset)
-    low_energy_flag = p.readUserDebugParameter(low_energy_mode)
-    high_performance_flag = p.readUserDebugParameter(high_performance_mode)
+    low_energy_flag = p.readUserDebugParameter(our_mpc)
+    high_performance_flag = p.readUserDebugParameter(normal_mpc)
     while not rospy.is_shutdown():
         # check reset button state
         if(reset_flag < p.readUserDebugParameter(reset)):
@@ -282,13 +282,13 @@ def main():
             rospy.logwarn("reset the robot")
             cnt = 0
             reset_robot()
-        if(low_energy_flag < p.readUserDebugParameter(low_energy_mode)):
-            low_energy_flag = p.readUserDebugParameter(low_energy_mode)
-            rospy.logwarn("set robot to low energy mode")
+        if(low_energy_flag < p.readUserDebugParameter(our_mpc)):
+            low_energy_flag = p.readUserDebugParameter(our_mpc)
+            rospy.logwarn("set robot to our_mpc")
             cpp_gait_ctrller.set_robot_mode(convert_type(1))
-        if(high_performance_flag < p.readUserDebugParameter(high_performance_mode)):
-            high_performance_flag = p.readUserDebugParameter(high_performance_mode)
-            rospy.logwarn("set robot to high performance mode")
+        if(high_performance_flag < p.readUserDebugParameter(normal_mpc)):
+            high_performance_flag = p.readUserDebugParameter(normal_mpc)
+            rospy.logwarn("set robot to normal_mpc")
             cpp_gait_ctrller.set_robot_mode(convert_type(0))
         # get data from simulator
         imu_data, leg_data, base_pos = get_data_from_sim()
