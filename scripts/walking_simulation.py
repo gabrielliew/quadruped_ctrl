@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import numpy
 import rospy
 import rospkg
@@ -160,7 +161,7 @@ def init_simulator():
     global boxId, reset, low_energy_mode, high_performance_mode, terrain
     robot_start_pos = [0, 0, 0.42]
     p.connect(p.GUI)  # or p.DIRECT for non-graphical version
-    p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
+    #p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
     reset = p.addUserDebugParameter("reset", 1, 0, 0)
     low_energy_mode = p.addUserDebugParameter("low_energy_mode", 1, 0, 0)
     high_performance_mode = p.addUserDebugParameter("high_performance_mode", 1, 0, 0)
@@ -233,7 +234,9 @@ def init_simulator():
         # p.changeDynamics(colSphereId4, -1, lateralFriction=0.5)
 
     p.changeDynamics(ground_id, -1, lateralFriction=lateralFriction)
-    boxId = p.loadURDF("mini_cheetah/mini_cheetah.urdf", robot_start_pos,
+    urdf_file = os.path.dirname(os.path.abspath(
+        __file__))+"/../urdf/mini_cheetah.urdf"
+    boxId = p.loadURDF(urdf_file, robot_start_pos,
                        useFixedBase=False)
     p.changeDynamics(boxId, 3, spinningFriction=spinningFriction)
     p.changeDynamics(boxId, 7, spinningFriction=spinningFriction)
