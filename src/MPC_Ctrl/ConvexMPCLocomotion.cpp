@@ -776,7 +776,12 @@ ConvexMPCLocomotion::computeReducedqH_qg(const Eigen::MatrixXd &q_H,
       Eigen::MatrixXd::Zero(activeLegs * 3, activeLegs * 3);
   Eigen::MatrixXd red_q_g = Eigen::MatrixXd::Zero(activeLegs * 3, 1);
   std::vector<int> indexList{};
-  auto gaitMap = Eigen::Map<const Eigen::VectorXi>(gait.data(), gait.size());
+  Eigen::VectorXi gaitMap(gait.rows() * gait.cols());
+  for (int i = 0; i < gait.rows(); i++) {
+    for (int j = 0; j < gait.cols(); j++) {
+      gaitMap[i * 4 + j] = gait(i, j);
+    }
+  }
   for (unsigned i = 0; i < gait.size(); i++) {
     if (gaitMap[i] == 1) {
       indexList.emplace_back(3 * i);
