@@ -5,6 +5,10 @@
 // #include "Utilities/Timer.h"
 // #include "Utilities/Utilities_print.h"
 #include "convexMPC_interface.h"
+
+#include <chrono>
+using namespace std::chrono;
+using namespace std::chrono_literals;
 // #include "../../../../common/FootstepPlanner/GraphSearch.h"
 
 // #include "Gait.h"
@@ -281,7 +285,6 @@ void ConvexMPCLocomotion::run(Quadruped<float> &_quadruped,
   Vec4<float> swingStates = gait->getSwingState();
   int *mpcTable = gait->getMpcTable();
 
-
   Eigen::MatrixXi gaitTable(10, 4);
   for (int ver = 0; ver < 10; ver++) {
     for (int hor = 0; hor < 4; hor++) {
@@ -298,16 +301,17 @@ void ConvexMPCLocomotion::run(Quadruped<float> &_quadruped,
   userInput.p_des[1] = world_position_desired[1];
   userInput.p_des[2] = 0.29;
   RobotSystemOutputData robotSystemData;
-  robotSystemData.worldToBaseRotMat(0,0) = seResult.rBody(0,0);
-  robotSystemData.worldToBaseRotMat(1,0) = seResult.rBody(1,0);
-  robotSystemData.worldToBaseRotMat(2,0) = seResult.rBody(2,0);
-  robotSystemData.worldToBaseRotMat(0,1) = seResult.rBody(0,1);
-  robotSystemData.worldToBaseRotMat(1,1) = seResult.rBody(1,1);
-  robotSystemData.worldToBaseRotMat(2,1) = seResult.rBody(2,1);
-  robotSystemData.worldToBaseRotMat(0,2) = seResult.rBody(0,2);
-  robotSystemData.worldToBaseRotMat(1,2) = seResult.rBody(1,2);
-  robotSystemData.worldToBaseRotMat(2,2) = seResult.rBody(2,2);
-  robotSystemData.baseToWorldRotMat = robotSystemData.worldToBaseRotMat.transpose();
+  robotSystemData.worldToBaseRotMat(0, 0) = seResult.rBody(0, 0);
+  robotSystemData.worldToBaseRotMat(1, 0) = seResult.rBody(1, 0);
+  robotSystemData.worldToBaseRotMat(2, 0) = seResult.rBody(2, 0);
+  robotSystemData.worldToBaseRotMat(0, 1) = seResult.rBody(0, 1);
+  robotSystemData.worldToBaseRotMat(1, 1) = seResult.rBody(1, 1);
+  robotSystemData.worldToBaseRotMat(2, 1) = seResult.rBody(2, 1);
+  robotSystemData.worldToBaseRotMat(0, 2) = seResult.rBody(0, 2);
+  robotSystemData.worldToBaseRotMat(1, 2) = seResult.rBody(1, 2);
+  robotSystemData.worldToBaseRotMat(2, 2) = seResult.rBody(2, 2);
+  robotSystemData.baseToWorldRotMat =
+      robotSystemData.worldToBaseRotMat.transpose();
   robotSystemData.worldPosition[0] = (double)seResult.position[0];
   robotSystemData.worldPosition[1] = (double)seResult.position[1];
   robotSystemData.worldPosition[2] = (double)seResult.position[2];
@@ -321,21 +325,37 @@ void ConvexMPCLocomotion::run(Quadruped<float> &_quadruped,
   robotSystemData.baseRotation.x() = seResult.orientation[1];
   robotSystemData.baseRotation.y() = seResult.orientation[2];
   robotSystemData.baseRotation.z() = seResult.orientation[3];
-  auto mpcData = updateMPC(robotSystemData, userInput, gaitTable);
-  auto preRotationTorque = solveMPC(mpcData);
-  for (int i = 0; i < 4; i++) {
-    auto tempTorque = -robotSystemData.baseToWorldRotMat *
-                      preRotationTorque.block<3, 1>(i * 3, 0);
-    for (int j = 0; j < 3; j++)
-      f_ff[i][j] = tempTorque[j];
-    std::cout<<f_ff[i].transpose()<<std::endl;
+  if ((iterationCounter % iterationsBetweenMPC) == 0) {
+    std::cout << "**************\n";
+    auto start2 = high_resolution_clock::now();
+
+    updateMPCIfNeeded(mpcTable, _stateEstimator, omniMode);
+    for (int i = 0; i < 4; i++) {
+      std::cout << f_ff[i].transpose() << std::endl;
+    }
+    auto end2 = high_resolution_clock::now();
+    std::cout << "time taken: "
+              << duration_cast<microseconds>(end2 - start2).count() << "us"
+              << std::endl;
+    std::cout << "@@@@@@@@@@@@@@@@@@@\n";
+    auto start = high_resolution_clock::now();
+
+    auto mpcData = updateMPC(robotSystemData, userInput, gaitTable);
+    auto preRotationTorque = solveMPC(mpcData);
+    for (int i = 0; i < 4; i++) {
+      auto tempTorque = -robotSystemData.baseToWorldRotMat *
+                        preRotationTorque.block<3, 1>(i * 3, 0);
+      for (int j = 0; j < 3; j++)
+        f_ff[i][j] = tempTorque[j];
+      std::cout << f_ff[i].transpose() << std::endl;
+    }
+
+    auto end = high_resolution_clock::now();
+    std::cout << "time taken: "
+              << duration_cast<microseconds>(end - start).count() << "us"
+              << std::endl;
+    std::cout << "**************\n\n";
   }
-  std::cout<<"**************\n";
-
-
-
-  // updateMPCIfNeeded(mpcTable, _stateEstimator, omniMode);
-
   //  StateEstimator* se = hw_i->state_estimator;
   Vec4<float> se_contactState(0, 0, 0, 0);
 
@@ -593,7 +613,8 @@ ConvexMPCLocomotion::updateMPC(const RobotSystemOutputData &robotSystemData,
   vBody_des = robotSystemData.baseToWorldRotMat * vBody_des;
   MPCData updateMPCData;
   updateMPCData.position = robotSystemData.worldPosition;
-  std::cout<<"updateMPCData.position: "<<updateMPCData.position.transpose()<<std::endl;
+  // std::cout<<"updateMPCData.position:
+  // "<<updateMPCData.position.transpose()<<std::endl;
   updateMPCData.velocity = robotSystemData.worldLinearVelocity;
   updateMPCData.orientation = robotSystemData.baseRotation;
   updateMPCData.omega = robotSystemData.worldAngularVelocity;
@@ -638,7 +659,8 @@ ConvexMPCLocomotion::updateMPC(const RobotSystemOutputData &robotSystemData,
           pFoot[i][j] - robotSystemData.worldPosition[j];
     }
   }
-  std::cout<<"updateMPCData.stateTrajectory: \n"<<updateMPCData.stateTrajectory<<std::endl;
+  // std::cout<<"updateMPCData.stateTrajectory:
+  // \n"<<updateMPCData.stateTrajectory<<std::endl;
   updateMPCData.gaitTable = gaitTable;
   updateMPCData.horizon = 10;
   updateMPCData.dtMPC = 0.026;

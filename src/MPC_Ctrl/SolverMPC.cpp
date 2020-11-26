@@ -432,8 +432,8 @@ void solve_mpc(update_data_t *update, problem_setup *setup) {
     }
   }
 
-  for (int i = 0; i < 12; i++) {
-    std::cout << q_soln[i] << " ";
-  }
-  std::cout << std::endl;
+  // for (int i = 0; i < 12; i++) {
+  //   std::cout << q_soln[i] << " ";
+  // }
+  // std::cout << std::endl;
 }

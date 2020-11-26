@@ -308,7 +308,7 @@ def main():
             cnt = 99999999
         p.stepSimulation()
         simTime+=1.0/freq
-        print(simTime)
+        # print(simTime)
         rate.sleep()
 
 
