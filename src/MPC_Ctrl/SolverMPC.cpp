@@ -70,16 +70,16 @@ void matrix_to_real(qpOASES::real_t *dst, Matrix<fpt, Dynamic, Dynamic> src,
 }
 
 void c2qp(Matrix<fpt, 13, 13> Ac, Matrix<fpt, 13, 12> Bc, fpt dt, s16 horizon) {
-  ABc.setZero();
-  ABc.block(0, 0, 13, 13) = Ac;
-  ABc.block(0, 13, 13, 12) = Bc;
-  ABc = dt * ABc;
-  expmm = ABc.exp();
-  Adt = expmm.block(0, 0, 13, 13);
-  Bdt = expmm.block(0, 13, 13, 12);
-#ifdef K_PRINT_EVERYTHING
-  cout << "Adt: \n" << Adt << "\nBdt:\n" << Bdt << endl;
-#endif
+  // ABc.setZero();
+  // ABc.block(0, 0, 13, 13) = Ac;
+  // ABc.block(0, 13, 13, 12) = Bc;
+  // ABc = dt * ABc;
+  // expmm = ABc.exp();
+  Adt = Ac;
+  Bdt = Bc;
+// #ifdef K_PRINT_EVERYTHING
+  // cout << "Adt: \n" << Adt << "\nBdt:\n" << Bdt << endl;
+// #endif
   if (horizon > 19) {
     // throw std::runtime_error("horizon is too long!");
   }
@@ -221,14 +221,11 @@ void ct_ss_mats(Matrix<fpt, 3, 3> I_world, fpt m, Matrix<fpt, 3, 4> r_feet,
                 Matrix<fpt, 3, 3> R_yaw, Matrix<fpt, 13, 13> &A,
                 Matrix<fpt, 13, 12> &B, float x_drag) {
   A.setZero();
-  A(3, 9) = 1.f;
-  A(11, 9) = x_drag;
-  A(4, 10) = 1.f;
-  A(5, 11) = 1.f;
+  A.setIdentity();
 
-  A(11, 12) = 1.f;
-  A.block(0, 6, 3, 3) = R_yaw.transpose();
-
+  A(11, 12) = 0.026;
+  A.block(0, 6, 3, 3) = R_yaw.transpose() * 0.026;
+  A.block(3, 9, 3, 3) = Matrix<fpt, 3, 3>::Identity() * 0.026;
   B.setZero();
   Matrix<fpt, 3, 3> I_inv = I_world.inverse();
 
@@ -236,6 +233,11 @@ void ct_ss_mats(Matrix<fpt, 3, 3> I_world, fpt m, Matrix<fpt, 3, 4> r_feet,
     B.block(6, b * 3, 3, 3) = cross_mat(I_inv, r_feet.col(b));
     B.block(9, b * 3, 3, 3) = Matrix<fpt, 3, 3>::Identity() / m;
   }
+
+  B *= 0.026;
+
+  // std::cout << "A_dt\n" << A << std::endl;
+  // std::cout << "B_dt\n" << B << std::endl;
 }
 
 void quat_to_rpy(Quaternionf q, Matrix<fpt, 3, 1> &rpy) {
@@ -276,12 +278,13 @@ Matrix<fpt, 13, 12> B_ct_r;
 void solve_mpc(update_data_t *update, problem_setup *setup) {
 
   rs.set(update->p, update->v, update->q, update->w, update->r, update->yaw);
+  // rs.print();
   Matrix<fpt, 3, 1> rpy;
   quat_to_rpy(rs.q, rpy);
 
   x_0 << rpy(2), rpy(1), rpy(0), rs.p, rs.w, rs.v, -9.8f;
   I_world = rs.R_yaw * rs.I_body * rs.R_yaw.transpose();
-
+  // std::cout<<"I_world\n"<<I_world<<std::endl;
   ct_ss_mats(I_world, rs.m, rs.r_feet, rs.R_yaw, A_ct, B_ct_r, update->x_drag);
   c2qp(A_ct, B_ct_r, setup->dt, setup->horizon);
   Matrix<fpt, 13, 1> full_weight;
@@ -317,6 +320,12 @@ void solve_mpc(update_data_t *update, problem_setup *setup) {
   }
   qH = (B_qp.transpose() * S * B_qp + update->alpha * eye_12h);
   qg = B_qp.transpose() * S * (A_qp * x_0 - X_d);
+  // std::cout << "x_0\n" << x_0 << std::endl;
+  // std::cout << "X_d\n" << X_d << std::endl;
+  // std::cout<<"A_qp\n"<<A_qp<<std::endl;
+  // std::cout<<"B_qp\n"<<B_qp<<std::endl;
+  // std::cout<<"qH\n"<<qH<<std::endl;
+  // std::cout<<"qg\n"<<qg<<std::endl;
   matrix_to_real(H_qpoases, qH, setup->horizon * 12, setup->horizon * 12);
   matrix_to_real(g_qpoases, qg, setup->horizon * 12, 1);
   matrix_to_real(A_qpoases, fmat, setup->horizon * 20, setup->horizon * 12);

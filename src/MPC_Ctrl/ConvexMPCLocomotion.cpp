@@ -146,7 +146,7 @@ void ConvexMPCLocomotion::_SetupCommand(
 
   _x_vel_des = x_vel_cmd; //一阶低通数字滤波
   _y_vel_des = y_vel_cmd;
-  _yaw_turn_rate = yaw_vel_cmd;
+  _yaw_turn_rate = 0.0;
   _yaw_des = _stateEstimator.getResult().rpy[2] +
              dt * _yaw_turn_rate; //涉及到了状态估计中的欧拉角
 
@@ -174,7 +174,7 @@ void ConvexMPCLocomotion::run(Quadruped<float> &_quadruped,
   }
 
   // pick gait
-  Gait *gait = &trotting;
+  Gait *gait = &standing;
 
   gait->setIterations(iterationsBetweenMPC, iterationCounter); //步态周期计算
 
@@ -327,6 +327,20 @@ void ConvexMPCLocomotion::run(Quadruped<float> &_quadruped,
   robotSystemData.baseRotation.z() = seResult.orientation[3];
   if ((iterationCounter % iterationsBetweenMPC) == 0) {
     std::cout << "**************\n";
+    std::cout << "yaw_des: " << userInput.yaw_des << std::endl;
+    std::cout << "worldToBaseRotMat:\n"
+              << robotSystemData.worldToBaseRotMat << std::endl;
+    std::cout << "worldPosition: " << robotSystemData.worldPosition.transpose()
+              << std::endl;
+    std::cout << "worldLinearVelocity: "
+              << robotSystemData.worldLinearVelocity.transpose() << std::endl;
+    std::cout << "worldAngularVelocity: "
+              << robotSystemData.worldAngularVelocity.transpose() << std::endl;
+    std::cout << "quaternion: " << robotSystemData.baseRotation.w() << " "
+              << robotSystemData.baseRotation.x() << " "
+              << robotSystemData.baseRotation.y() << " "
+              << robotSystemData.baseRotation.z() << std::endl;
+    std::cout << "@@@@@@@@@@@@@@@@@@@\n";
     auto start2 = high_resolution_clock::now();
 
     updateMPCIfNeeded(mpcTable, _stateEstimator, omniMode);
@@ -334,9 +348,9 @@ void ConvexMPCLocomotion::run(Quadruped<float> &_quadruped,
       std::cout << f_ff[i].transpose() << std::endl;
     }
     auto end2 = high_resolution_clock::now();
-    std::cout << "time taken: "
-              << duration_cast<microseconds>(end2 - start2).count() << "us"
-              << std::endl;
+    // std::cout << "time taken: "
+    //           << duration_cast<microseconds>(end2 - start2).count() << "us"
+    //           << std::endl;
     std::cout << "@@@@@@@@@@@@@@@@@@@\n";
     auto start = high_resolution_clock::now();
 
@@ -344,7 +358,7 @@ void ConvexMPCLocomotion::run(Quadruped<float> &_quadruped,
     auto preRotationTorque = solveMPC(mpcData);
     if (robotMode == 1) {
       for (int i = 0; i < 4; i++) {
-        auto tempTorque = -robotSystemData.baseToWorldRotMat *
+        auto tempTorque = -robotSystemData.worldToBaseRotMat *
                           preRotationTorque.block<3, 1>(i * 3, 0);
         for (int j = 0; j < 3; j++)
           f_ff[i][j] = tempTorque[j];
@@ -352,7 +366,7 @@ void ConvexMPCLocomotion::run(Quadruped<float> &_quadruped,
       }
     } else {
       for (int i = 0; i < 4; i++) {
-        auto tempTorque = -robotSystemData.baseToWorldRotMat *
+        auto tempTorque = -robotSystemData.worldToBaseRotMat *
                           preRotationTorque.block<3, 1>(i * 3, 0);
         for (int j = 0; j < 3; j++)
           f_ff2[i][j] = tempTorque[j];
@@ -360,9 +374,9 @@ void ConvexMPCLocomotion::run(Quadruped<float> &_quadruped,
       }
     }
     auto end = high_resolution_clock::now();
-    std::cout << "time taken: "
-              << duration_cast<microseconds>(end - start).count() << "us"
-              << std::endl;
+    // std::cout << "time taken: "
+    //           << duration_cast<microseconds>(end - start).count() << "us"
+    //           << std::endl;
     std::cout << "**************\n\n";
   }
   //  StateEstimator* se = hw_i->state_estimator;
@@ -539,10 +553,9 @@ void ConvexMPCLocomotion::updateMPCIfNeeded(
         for (int j = 0; j < 12; j++)
           trajAll[12 * i + j] = trajInitial[j];
 
-        if (i == 0) // start at current position  TODO consider not doing this
+        if (i > 0) // start at current position  TODO consider not doing this
         {
-          trajAll[2] = seResult.rpy[2];
-        } else {
+
           trajAll[12 * i + 3] =
               trajAll[12 * (i - 1) + 3] + dtMPC * v_des_world[0];
           trajAll[12 * i + 4] =
@@ -679,6 +692,13 @@ ConvexMPCLocomotion::updateMPC(const RobotSystemOutputData &robotSystemData,
           pFoot[i][j] - robotSystemData.worldPosition[j];
     }
   }
+  // for(int i=0;i<3;i++){
+  //   for(int j=0;j<4;j++){
+  //     std::cout<<updateMPCData.distanceFromCOM[j][i]<<"  ";
+  //   }
+  //   std::cout<<std::endl;
+  // }
+  // std::cout<<std::endl;
   // std::cout<<"updateMPCData.stateTrajectory:
   // \n"<<updateMPCData.stateTrajectory<<std::endl;
   updateMPCData.gaitTable = gaitTable;
@@ -705,11 +725,11 @@ std::pair<A_dt_t, B_dt_t> ConvexMPCLocomotion::computeAdt_Bdt(
   Eigen::Matrix3d I_world = rotMat * I_body * rotMat.transpose();
   Eigen::Matrix3d I_world_inv;
   I_world_inv = I_world.inverse();
-
+  // std::cout<<"I_world\n"<<I_world<<std::endl;
   A_dt.setZero();
   B_dt.setZero();
   A_dt.setIdentity();
-  A_dt.block<3, 3>(0, 6) = rotMat * dtMPC;
+  A_dt.block<3, 3>(0, 6) = rotMat.transpose() * dtMPC;
   A_dt.block<3, 3>(3, 9) = Eigen::Matrix3d::Identity() * dtMPC;
   A_dt(11, 12) = dtMPC;
 
@@ -719,7 +739,8 @@ std::pair<A_dt_t, B_dt_t> ConvexMPCLocomotion::computeAdt_Bdt(
   }
 
   B_dt *= dtMPC;
-
+  // std::cout << "Adt\n" << A_dt << std::endl;
+  // std::cout << "Bdt\n" << B_dt << std::endl;
   return std::make_pair(A_dt, B_dt);
 }
 
@@ -764,6 +785,13 @@ std::pair<Eigen::MatrixXd, Eigen::MatrixXd> ConvexMPCLocomotion::computeqH_qg(
   S.diagonal() = weights.replicate(horizon, 1);
   q_H = B_qp.transpose() * S * B_qp + R;
   q_g = B_qp.transpose() * S * (A_qp * x_0 - x_d);
+
+  // std::cout << "x_0\n" << x_0 << std::endl;
+  // std::cout << "X_d\n" << x_d << std::endl;
+  // std::cout<<"A_qp\n"<<A_qp<<std::endl;
+  // std::cout<<"B_qp\n"<<B_qp<<std::endl;
+  // std::cout << "qH\n" << q_H << std::endl;
+  // std::cout << "qg\n" << q_g << std::endl;
   return std::make_pair(q_H, q_g);
 }
 
@@ -805,15 +833,16 @@ std::tuple<RowMatrixXd, Eigen::VectorXd, Eigen::VectorXd>
 ConvexMPCLocomotion::generateConstraints(const Eigen::MatrixXi &gaitTable) {
   int activeLegs = (gaitTable.array() != 0).count();
 
-  double mu = 0.2;
-  Eigen::Matrix<double, 6, 3> f_block;
-  f_block << 1, 0, mu, -1, 0, mu, 0, 1, mu, 0, -1, mu, 0, 0, 1.0, 0, 0, -1.0;
-  Eigen::Matrix<double, 6, 1> lb_block =
-      (Eigen::Matrix<double, 6, 1>() << 0, 0, 0, 0, 0, -1500.0).finished();
+  double mu = 1.0 / 0.4;
+  Eigen::Matrix<double, 5, 3> f_block;
+  f_block << mu, 0, 1.0, -mu, 0, 1.0, 0, mu, 1.0, 0, -mu, 1.0, 0, 0, 1.0;
+  Eigen::Matrix<double, 5, 1> lb_block =
+      (Eigen::Matrix<double, 5, 1>() << 0, 0, 0, 0, 0).finished();
+  Eigen::Matrix<double, 5, 1> ub_block =
+      (Eigen::Matrix<double, 5, 1>() << 5e10, 5e10, 5e10, 5e10, 120).finished();
   RowMatrixXd constraints = createBlockDiagonal(f_block, activeLegs);
   Eigen::VectorXd lb = createBlockVertical(lb_block, activeLegs);
-  Eigen::VectorXd ub = Eigen::VectorXd::Constant(
-      activeLegs * 6, std::numeric_limits<double>::max());
+  Eigen::VectorXd ub = createBlockVertical(ub_block, activeLegs);
   return {constraints, lb, ub};
 }
 
@@ -834,8 +863,9 @@ ConvexMPCLocomotion::solveMPC(const MPCData &input) {
       computeReducedqH_qg(q_H, q_g, input.gaitTable);
   const auto [A_mat, lb, ub] = generateConstraints(input.gaitTable);
 
-  qpOASES::QProblem qProblem(activeLegs * 3, num_variables);
+  qpOASES::QProblem qProblem(activeLegs * 3, 100);
   qpOASES::Options options;
+  options.setToMPC();
   options.printLevel = qpOASES::PL_NONE;
   qProblem.setOptions(options);
   qpOASES::int_t nWSR = 1000;
